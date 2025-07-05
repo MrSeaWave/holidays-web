@@ -1,8 +1,12 @@
 import { isWeekEnd, isHoliday } from '@swjs/chinese-holidays';
 import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
 
 import type { IVacationConstraints } from './calculate';
 import { getVacationSuggestions } from './calculate';
+
+// 启用 dayjs 插件
+dayjs.extend(isBetween);
 
 /**
  * 使用示例
@@ -39,6 +43,7 @@ export async function exampleUsage(): Promise<unknown> {
     console.log('\n💡 提示：');
     console.log('   - 如需添加约束条件，请使用 exampleWithConstraints() 函数');
     console.log('   - 如需设置多个约束条件，请使用 exampleWithMultipleConstraints() 函数');
+    console.log('   - 如需测试强制休假功能，请使用 exampleMandatoryVacation() 函数');
 
     return result;
   } catch (error) {
@@ -314,4 +319,418 @@ export async function testHolidayConnectionOptimization(): Promise<unknown> {
     console.error('测试节假日连接优化时出错:', error);
     return null;
   }
+}
+
+/**
+ * 🆕 简单强制休假示例
+ * 展示最基本的强制休假功能使用方法
+ */
+export async function exampleMandatoryVacation(): Promise<unknown> {
+  try {
+    console.log('=== 🎯 强制休假功能基础示例 ===');
+
+    // 场景：员工需要在7月15-25日期间强制休假3天
+    const startDate = '2025-07-01';
+    const endDate = '2025-07-31';
+    const vacationDays = 6;
+
+    const constraints: IVacationConstraints = {
+      mandatoryVacationWithinRange: [
+        {
+          startDate: '2025-07-15',
+          endDate: '2025-07-25',
+          days: 3, // 在指定期间内必须休满3天
+        },
+      ],
+    };
+
+    console.log(`📅 时间范围: ${startDate} 到 ${endDate}`);
+    console.log(`🏖️ 总休假天数: ${vacationDays}天`);
+    console.log(`📋 强制约束: 在7月15-25日期间必须休满3天`);
+    console.log(`💡 算法会优先满足强制约束，再优化剩余3天的分配`);
+
+    const result = await getVacationSuggestions(startDate, endDate, vacationDays, constraints);
+
+    console.log('\n=== 📊 计算结果 ===');
+    if (result.bestPlans.length === 0) {
+      console.log('❌ 无法满足强制休假约束');
+    } else {
+      result.bestPlans.forEach((plan, index) => {
+        console.log(`\n✅ 方案 ${index + 1} (得分: ${plan.score})`);
+        console.log(`📅 休假日期: ${plan.dates.join(', ')}`);
+        console.log(`⏰ 最长连续假期: ${plan.continuousDays}天`);
+
+        // 分析强制休假满足情况
+        const mandatoryRange = constraints.mandatoryVacationWithinRange![0];
+        const mandatoryDates = plan.dates.filter(date => {
+          const d = dayjs(date);
+          return d.isBetween(mandatoryRange.startDate, mandatoryRange.endDate, 'day', '[]');
+        });
+
+        console.log(`🎯 强制休假分析:`);
+        console.log(
+          `   - 强制区间内休假: ${mandatoryDates.join(', ')} (${mandatoryDates.length}天)`
+        );
+        console.log(
+          `   - 是否满足约束: ${mandatoryDates.length >= mandatoryRange.days ? '✅ 是' : '❌ 否'}`
+        );
+
+        const remainingDates = plan.dates.filter(date => !mandatoryDates.includes(date));
+        if (remainingDates.length > 0) {
+          console.log(
+            `   - 其他休假日期: ${remainingDates.join(', ')} (${remainingDates.length}天)`
+          );
+        }
+      });
+    }
+
+    console.log('\n💡 功能特点:');
+    console.log('   ✅ 优先满足强制休假约束');
+    console.log('   ✅ 在约束区间内智能选择最优日期');
+    console.log('   ✅ 优化剩余休假天数的分配');
+    console.log('   ✅ 确保生成可行的休假方案');
+
+    return result;
+  } catch (error) {
+    console.error('强制休假示例执行出错:', error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
+/**
+ * 🆕 国庆假期强制休假示例
+ * 展示如何在节假日期间设置强制休假约束
+ */
+export async function exampleNationalDayMandatoryVacation(): Promise<unknown> {
+  try {
+    console.log('=== 🇨🇳 国庆假期强制休假示例 ===');
+
+    // 场景：利用2024年国庆假期，在国庆前后强制安排休假
+    const startDate = '2024-09-20';
+    const endDate = '2024-10-15';
+    const vacationDays = 8;
+
+    const constraints: IVacationConstraints = {
+      mandatoryVacationWithinRange: [
+        {
+          startDate: '2024-09-25',
+          endDate: '2024-09-30',
+          days: 3, // 国庆前必须休3天，连接假期
+        },
+        {
+          startDate: '2024-10-08',
+          endDate: '2024-10-12',
+          days: 2, // 国庆后必须休2天，延长假期
+        },
+      ],
+    };
+
+    console.log(`📅 时间范围: ${startDate} 到 ${endDate}`);
+    console.log(`🏖️ 总休假天数: ${vacationDays}天`);
+    console.log(`📋 强制约束:`);
+    console.log(`   1. 国庆前(9月25-30日)必须休3天 - 目标：连接国庆假期`);
+    console.log(`   2. 国庆后(10月8-12日)必须休2天 - 目标：延长假期`);
+    console.log(`💡 2024年国庆节假期：10月1-7日(7天)`);
+
+    const result = await getVacationSuggestions(startDate, endDate, vacationDays, constraints);
+
+    console.log('\n=== 📊 计算结果 ===');
+    if (result.bestPlans.length === 0) {
+      console.log('❌ 无法满足强制休假约束');
+    } else {
+      result.bestPlans.forEach((plan, index) => {
+        console.log(`\n🏆 方案 ${index + 1} (得分: ${plan.score})`);
+        console.log(`📅 休假日期: ${plan.dates.join(', ')}`);
+        console.log(`⏰ 最长连续假期: ${plan.continuousDays}天`);
+
+        // 分析国庆假期连接效果
+        const beforeNationalDay = plan.dates.filter(date =>
+          dayjs(date).isBetween('2024-09-25', '2024-09-30', 'day', '[]')
+        );
+        const afterNationalDay = plan.dates.filter(date =>
+          dayjs(date).isBetween('2024-10-08', '2024-10-12', 'day', '[]')
+        );
+        const otherDates = plan.dates.filter(
+          date => !beforeNationalDay.includes(date) && !afterNationalDay.includes(date)
+        );
+
+        console.log(`🎯 国庆假期连接分析:`);
+        console.log(
+          `   - 国庆前休假: ${beforeNationalDay.join(', ')} (${beforeNationalDay.length}天)`
+        );
+        console.log(`   - 国庆假期: 10月1-7日 (7天) 🇨🇳`);
+        console.log(
+          `   - 国庆后休假: ${afterNationalDay.join(', ')} (${afterNationalDay.length}天)`
+        );
+        if (otherDates.length > 0) {
+          console.log(`   - 其他休假: ${otherDates.join(', ')} (${otherDates.length}天)`);
+        }
+
+        // 计算总假期长度
+        const totalHolidayLength = beforeNationalDay.length + 7 + afterNationalDay.length;
+        console.log(`   ✨ 预计连续假期: ${totalHolidayLength}天 (含7天国庆假期)`);
+
+        if (totalHolidayLength >= 12) {
+          console.log(`   🏅 恭喜！创造了${totalHolidayLength}天的超长假期！`);
+        } else if (totalHolidayLength >= 10) {
+          console.log(`   🎉 很棒！形成了${totalHolidayLength}天的长假期！`);
+        }
+      });
+    }
+
+    console.log('\n💡 这个示例展示了强制休假的实际应用场景：');
+    console.log('   🎯 策略性地连接节假日');
+    console.log('   📈 最大化休假效率');
+    console.log('   🧠 智能分配有限的休假天数');
+    console.log('   ⚖️ 平衡多个强制约束');
+
+    return result;
+  } catch (error) {
+    console.error(
+      '国庆强制休假示例执行出错:',
+      error instanceof Error ? error.message : String(error)
+    );
+    return null;
+  }
+}
+
+/**
+ * 🆕 强制休假约束冲突处理示例
+ * 展示当约束条件无法满足时的处理情况
+ */
+export async function exampleMandatoryVacationConflict(): Promise<unknown> {
+  try {
+    console.log('=== ⚠️ 强制休假约束冲突处理示例 ===');
+
+    // 设计一个无法满足的约束场景
+    const startDate = '2025-07-01';
+    const endDate = '2025-07-31';
+    const vacationDays = 5; // 总共只有5天休假
+
+    const constraints: IVacationConstraints = {
+      excludedDates: [
+        '2025-07-01',
+        '2025-07-02',
+        '2025-07-03',
+        '2025-07-04',
+        '2025-07-07',
+        '2025-07-08',
+        '2025-07-09',
+        '2025-07-10',
+        '2025-07-11',
+        '2025-07-14',
+      ], // 排除大量工作日
+      mandatoryVacationWithinRange: [
+        {
+          startDate: '2025-07-01',
+          endDate: '2025-07-10',
+          days: 4, // 要求在工作日较少的区间内休4天
+        },
+        {
+          startDate: '2025-07-15',
+          endDate: '2025-07-25',
+          days: 3, // 同时要求在另一个区间休3天
+        },
+      ], // 总共要求7天，但只有5天休假
+    };
+
+    console.log(`📅 时间范围: ${startDate} 到 ${endDate}`);
+    console.log(`🏖️ 总休假天数: ${vacationDays}天`);
+    console.log(`🚫 不可休假日期: ${constraints.excludedDates?.join(', ')}`);
+    console.log(`📋 强制约束 (故意设置冲突):`);
+    console.log(`   1. 7月1-10日期间必须休4天`);
+    console.log(`   2. 7月15-25日期间必须休3天`);
+    console.log(`⚠️ 冲突点: 强制约束要求7天，但总休假只有5天`);
+
+    const result = await getVacationSuggestions(startDate, endDate, vacationDays, constraints);
+
+    console.log('\n=== 📊 计算结果 ===');
+    if (result.bestPlans.length === 0) {
+      console.log('❌ 检测到约束冲突，无法生成休假方案');
+      console.log('\n🔍 冲突分析:');
+      console.log('   - 强制约束总需求: 4 + 3 = 7天');
+      console.log('   - 可用休假天数: 5天');
+      console.log('   - 缺口: 2天');
+
+      console.log('\n💡 解决建议:');
+      console.log('   1. 📈 增加总休假天数至7天或以上');
+      console.log('   2. 📉 减少强制约束的天数要求');
+      console.log('   3. 🗓️ 调整强制约束的日期范围');
+      console.log('   4. 🔄 重新评估不可休假日期的必要性');
+    } else {
+      console.log('✅ 意外地找到了解决方案（这表明算法很智能）：');
+      result.bestPlans.forEach((plan, index) => {
+        console.log(`\n方案 ${index + 1}:`);
+        console.log(`📅 休假日期: ${plan.dates.join(', ')}`);
+        console.log(`⏰ 最长连续假期: ${plan.continuousDays}天`);
+      });
+    }
+
+    console.log('\n🛡️ 错误处理机制特点:');
+    console.log('   ✅ 智能检测约束冲突');
+    console.log('   ✅ 提供详细的失败原因');
+    console.log('   ✅ 给出具体的解决建议');
+    console.log('   ✅ 避免生成无效方案');
+
+    return result;
+  } catch (error) {
+    console.error('约束冲突示例执行出错:', error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
+/**
+ * 🆕 复杂强制休假场景示例
+ * 展示在复杂实际场景中的强制休假应用
+ */
+export async function exampleComplexMandatoryVacation(): Promise<unknown> {
+  try {
+    console.log('=== 🏢 复杂企业休假场景示例 ===');
+
+    // 模拟企业实际场景：员工需要配合项目时间安排休假
+    const startDate = '2025-06-01';
+    const endDate = '2025-09-30';
+    const vacationDays = 15; // 较多的休假天数
+
+    const constraints: IVacationConstraints = {
+      excludedDates: [
+        '2025-06-15', // 季度总结会议
+        '2025-06-30', // 月末结算
+        '2025-07-31', // 月末结算
+        '2025-08-15', // 产品发布日
+        '2025-09-15', // 项目验收
+        '2025-09-30', // 季度末
+      ],
+      mandatoryVacationWithinRange: [
+        {
+          startDate: '2025-06-20',
+          endDate: '2025-06-28',
+          days: 3, // 6月底前必须休假（项目间隙期）
+        },
+        {
+          startDate: '2025-07-15',
+          endDate: '2025-07-25',
+          days: 5, // 7月中下旬必须休假（暑期项目暂停）
+        },
+        {
+          startDate: '2025-08-20',
+          endDate: '2025-08-31',
+          days: 4, // 8月底必须休假（新项目启动前）
+        },
+        {
+          startDate: '2025-09-05',
+          endDate: '2025-09-12',
+          days: 2, // 9月初必须休假（项目收尾期）
+        },
+      ],
+    };
+
+    console.log(`📅 时间范围: ${startDate} 到 ${endDate} (4个月)`);
+    console.log(`🏖️ 总休假天数: ${vacationDays}天`);
+    console.log(`🚫 重要工作日: 6月15日, 6月30日, 7月31日, 8月15日, 9月15日, 9月30日`);
+    console.log(`📋 企业强制休假安排:`);
+    console.log(`   1. 6月20-28日: 必须休3天 (项目间隙期)`);
+    console.log(`   2. 7月15-25日: 必须休5天 (暑期项目暂停)`);
+    console.log(`   3. 8月20-31日: 必须休4天 (新项目启动前)`);
+    console.log(`   4. 9月5-12日: 必须休2天 (项目收尾期)`);
+    console.log(`💼 强制约束总计: 3+5+4+2 = 14天，剩余自由安排: 1天`);
+
+    const result = await getVacationSuggestions(startDate, endDate, vacationDays, constraints);
+
+    console.log('\n=== 📊 企业休假方案分析 ===');
+    if (result.bestPlans.length === 0) {
+      console.log('❌ 无法满足企业休假安排要求');
+    } else {
+      result.bestPlans.forEach((plan, index) => {
+        console.log(`\n🏆 企业休假方案 ${index + 1} (得分: ${plan.score})`);
+        console.log(`📅 全年休假日期: ${plan.dates.join(', ')}`);
+        console.log(`⏰ 最长连续假期: ${plan.continuousDays}天`);
+        console.log(`📝 假期安排: ${plan.description}`);
+
+        // 按季度分析休假分布
+        const quarters = [
+          { name: '6月', start: '2025-06-01', end: '2025-06-30' },
+          { name: '7月', start: '2025-07-01', end: '2025-07-31' },
+          { name: '8月', start: '2025-08-01', end: '2025-08-31' },
+          { name: '9月', start: '2025-09-01', end: '2025-09-30' },
+        ];
+
+        console.log(`\n📊 月度休假分布:`);
+        quarters.forEach(quarter => {
+          const quarterDates = plan.dates.filter(date =>
+            dayjs(date).isBetween(quarter.start, quarter.end, 'day', '[]')
+          );
+          console.log(`   ${quarter.name}: ${quarterDates.join(', ')} (${quarterDates.length}天)`);
+        });
+
+        // 验证强制约束满足情况
+        console.log(`\n✅ 强制约束验证:`);
+        constraints.mandatoryVacationWithinRange?.forEach((constraint, idx) => {
+          const constraintDates = plan.dates.filter(date => {
+            const d = dayjs(date);
+            return d.isBetween(constraint.startDate, constraint.endDate, 'day', '[]');
+          });
+          const period = `${constraint.startDate.slice(5)}~${constraint.endDate.slice(5)}`;
+          const status = constraintDates.length >= constraint.days ? '✅' : '❌';
+          console.log(
+            `   ${idx + 1}. ${period}: ${constraintDates.length}/${constraint.days}天 ${status}`
+          );
+        });
+      });
+    }
+
+    console.log('\n🏢 企业休假管理优势:');
+    console.log('   📅 配合项目周期安排休假');
+    console.log('   ⚖️ 平衡工作需求和员工权益');
+    console.log('   🎯 确保关键时间点有足够人力');
+    console.log('   🔄 灵活应对复杂约束条件');
+    console.log('   📈 提高休假计划的执行效率');
+
+    return result;
+  } catch (error) {
+    console.error(
+      '复杂强制休假示例执行出错:',
+      error instanceof Error ? error.message : String(error)
+    );
+    return null;
+  }
+}
+
+/**
+ * 🆕 运行所有强制休假示例
+ * 一键体验所有强制休假功能
+ */
+export async function runAllMandatoryVacationExamples(): Promise<void> {
+  console.log('🚀 === 强制休假功能完整演示 === 🚀\n');
+
+  const examples = [
+    { name: '基础强制休假', func: exampleMandatoryVacation },
+    { name: '国庆假期连接', func: exampleNationalDayMandatoryVacation },
+    { name: '约束冲突处理', func: exampleMandatoryVacationConflict },
+    { name: '复杂企业场景', func: exampleComplexMandatoryVacation },
+  ];
+
+  for (let i = 0; i < examples.length; i++) {
+    const example = examples[i];
+    console.log(`\n${'='.repeat(50)}`);
+    console.log(`📚 示例 ${i + 1}/${examples.length}: ${example.name}`);
+    console.log(`${'='.repeat(50)}`);
+
+    try {
+      await example.func();
+    } catch (error) {
+      console.error(
+        `❌ 示例 "${example.name}" 执行失败:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    if (i < examples.length - 1) {
+      console.log('\n⏳ 3秒后继续下一个示例...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+
+  console.log('\n🎉 === 所有强制休假示例演示完成 === 🎉');
+  console.log('💡 现在你已经了解了强制休假功能的各种使用场景！');
 }

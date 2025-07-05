@@ -1,4 +1,4 @@
-import React, { memo, useState, useCallback, useEffect } from 'react';
+import { memo, useState, useCallback, useEffect } from 'react';
 
 import {
   CalendarOutlined,
@@ -194,7 +194,7 @@ export const VacationPlannerPage = memo(() => {
   }, []);
 
   // 获取方案状态颜色
-  const getPlanStatusColor = (plan: IVacationPlan, index: number): string => {
+  const getPlanStatusColor = (index: number): string => {
     if (index === 0) return 'gold';
     if (index === 1) return 'cyan';
     if (index === 2) return 'blue';
@@ -436,9 +436,7 @@ export const VacationPlannerPage = memo(() => {
                                     </Tag>
                                   )}
                                 </Text>
-                                <Tag color={getPlanStatusColor(plan, index)}>
-                                  得分: {plan.score}
-                                </Tag>
+                                <Tag color={getPlanStatusColor(index)}>得分: {plan.score}</Tag>
                               </Space>
                             }
                           >
