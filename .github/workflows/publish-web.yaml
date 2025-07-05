@@ -9,6 +9,9 @@ env:
   PNPM_CACHE_FOLDER: .pnpm-store
   TZ: Asia/Shanghai # 时区（设置时区可使页面中的`最近更新时间`使用时区时间）
 
+permissions:
+  contents: write
+
 jobs:
   test-ci:
     runs-on: ubuntu-latest
