@@ -74,7 +74,7 @@ export const VacationPlannerPage = memo(() => {
   const [workingWeekendDates, setWorkingWeekendDates] = useState<string[]>([]);
   const [holidayLoading, setHolidayLoading] = useState(false);
   const [formData, setFormData] = useState<IFormData>({
-    dateRange: null,
+    dateRange: [dayjs(), dayjs().endOf('year')],
     vacationDays: 5,
     excludedDates: [],
     mandatoryRanges: [],
@@ -82,7 +82,7 @@ export const VacationPlannerPage = memo(() => {
 
   // 获取节假日和周末上班数据
   useEffect(() => {
-    const loadHolidaysAndWorkingWeekends = async () => {
+    const loadHolidaysAndWorkingWeekends = async (): Promise<void> => {
       const year = formData.dateRange ? formData.dateRange[0].year() : dayjs().year();
       setHolidayLoading(true);
       try {
@@ -173,14 +173,17 @@ export const VacationPlannerPage = memo(() => {
   }, []);
 
   // 更新强制休假范围
-  const handleUpdateMandatoryRange = useCallback((index: number, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      mandatoryRanges: prev.mandatoryRanges.map((range, i) =>
-        i === index ? { ...range, [field]: value } : range
-      ),
-    }));
-  }, []);
+  const handleUpdateMandatoryRange = useCallback(
+    (index: number, field: string, value: string | number) => {
+      setFormData(prev => ({
+        ...prev,
+        mandatoryRanges: prev.mandatoryRanges.map((range, i) =>
+          i === index ? { ...range, [field]: value } : range
+        ),
+      }));
+    },
+    []
+  );
 
   // 删除强制休假范围
   const handleRemoveMandatoryRange = useCallback((index: number) => {
@@ -219,7 +222,9 @@ export const VacationPlannerPage = memo(() => {
                 <RangePicker
                   className="vacation-planner__date-picker"
                   value={formData.dateRange}
-                  onChange={dates => setFormData(prev => ({ ...prev, dateRange: dates }))}
+                  onChange={dates =>
+                    setFormData(prev => ({ ...prev, dateRange: dates as [Dayjs, Dayjs] | null }))
+                  }
                   placeholder={['开始日期', '结束日期']}
                   disabledDate={current => current && current < dayjs().startOf('day')}
                 />
@@ -230,7 +235,7 @@ export const VacationPlannerPage = memo(() => {
                   min={1}
                   max={30}
                   value={formData.vacationDays}
-                  onChange={value => setFormData(prev => ({ ...prev, vacationDays: value || 5 }))}
+                  onChange={value => setFormData(prev => ({ ...prev, vacationDays: value ?? 5 }))}
                   addonAfter="天"
                   className="vacation-planner__input-number"
                 />
@@ -304,7 +309,7 @@ export const VacationPlannerPage = memo(() => {
                           size="small"
                           placeholder={['开始日期', '结束日期']}
                           onChange={dates => {
-                            if (dates) {
+                            if (dates?.[0] && dates?.[1]) {
                               handleUpdateMandatoryRange(
                                 index,
                                 'startDate',
@@ -323,7 +328,7 @@ export const VacationPlannerPage = memo(() => {
                           min={1}
                           placeholder="必须休假天数"
                           value={range.days}
-                          onChange={value => handleUpdateMandatoryRange(index, 'days', value || 1)}
+                          onChange={value => handleUpdateMandatoryRange(index, 'days', value ?? 1)}
                           addonAfter="天"
                         />
                       </Space>
@@ -501,7 +506,7 @@ export const VacationPlannerPage = memo(() => {
                           <span className="vacation-planner__legend-indicator vacation-planner__legend-indicator--vacation"></span>
                           计划休假（休）
                         </Tag>
-                        <Tag color="orange">
+                        <Tag color="darkgrey">
                           <span className="vacation-planner__legend-indicator vacation-planner__legend-indicator--excluded"></span>
                           不可休假（禁）
                         </Tag>
