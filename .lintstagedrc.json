@@ -1,0 +1,5 @@
+{
+  "package.json": ["npmPkgJsonLint ."],
+  "?(*.{js,jsx,ts,tsx}|!(package).json)": ["prettier --write", "eslint --fix"],
+  "*.scss": ["prettier --write", "stylelint --fix"]
+}

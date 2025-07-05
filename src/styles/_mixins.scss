@@ -1,0 +1,59 @@
+@mixin card {
+  background-color: #fff;
+  padding: 24px;
+  border-radius: 6px;
+}
+
+// 清楚btn默认样式
+// .cssName {
+//   @include clear-btn;
+// }
+@mixin clear-btn {
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+  border: none;
+  outline: none;
+}
+
+// 隐藏滚动条
+// e.g
+// .cssName {
+//   @include hide-scroll-bar;
+// }
+@mixin hide-scroll-bar {
+  // Hide scrollbar
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}
+
+// 文字省略
+// e.g
+// .clsName {
+//   @include text-ellipsis;
+// }
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 
+多行文字省略
+
+e.g
+
+.clsName {
+  @include line-clamp(2)
+}
+*/
+@mixin line-clamp($lines) {
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+}
