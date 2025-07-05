@@ -8,6 +8,8 @@ import svgr from 'vite-plugin-svgr';
 // https://cn.vite.dev/config/#using-environment-variables-in-config
 // https://vitejs.dev/config/
 export default defineConfig({
+  // https://cn.vite.dev/guide/static-deploy.html#github-pages
+  // is repo name
   base: '/holidays-web',
   plugins: [
     react(),

@@ -7,6 +7,7 @@
     "dev": "vite",
     "test": "vitest run",
     "build": "tsc -b && vite build",
+    "postbuild": "echo '为了github重定向' && cp dist/index.html dist/404.html",
     "preview": "vite preview",
     "clean-local": "rimraf --glob '**/node_modules'",
     "prepare": "husky",
