@@ -4,6 +4,8 @@ import { codeInspectorPlugin } from 'code-inspector-plugin';
 import { defineConfig } from 'vite';
 import svgr from 'vite-plugin-svgr';
 
+const isTest = process.env.VITEST === 'true';
+
 // 在配置中使用环境变量
 // https://cn.vite.dev/config/#using-environment-variables-in-config
 // https://vitejs.dev/config/
@@ -15,9 +17,10 @@ export default defineConfig({
     react(),
     svgr(),
     // cmd+shift 快速定位源码
-    codeInspectorPlugin({
-      bundler: 'vite',
-    }),
+    !isTest &&
+      codeInspectorPlugin({
+        bundler: 'vite',
+      }),
   ],
   server: {
     proxy: {

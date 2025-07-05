@@ -1,31 +1,15 @@
 /**
- * 智能休假方案计算器
+ * 智能休假方案计算器 (精简版)
  *
- * 功能特性：
- * 1. 🎯 智能识别工作日、周末、节假日
+ * 核心功能：
+ * 1. 🎯 智能识别工作日、周末、节假日、调休上班日
  * 2. 📅 支持中国节假日和调休政策
  * 3. 🚫 支持设置不可休假日期
- * 4. 📋 支持设置日期范围内的强制休假约束
- * 5. 🏆 多策略评分算法，自动推荐最佳方案
- * 6. 🔄 支持多个约束条件同时生效
- *
- * 使用方法：
- * - 基础用法：calculateBestVacationPlan(startDate, endDate, vacationDays)
- * - 约束用法：calculateBestVacationPlan(startDate, endDate, vacationDays, constraints)
- * - 建议接口：getVacationSuggestions(startDate, endDate, vacationDays, constraints)
- *
- * 约束类型：
- * - excludedDates: 不可休假的日期列表
- * - mandatoryVacationWithinRange: 指定日期范围内必须休假的约束
- *
- * 示例函数：
- * - exampleUsage(): 基础功能演示
- * - exampleWithConstraints(): 单约束条件演示
- * - exampleWithMultipleConstraints(): 多约束条件演示
- * - testWeekendDetection(): 周末识别测试
+ * 4. ⏰ 支持连续休假天数限制
+ * 5. 🏆 智能推荐高效休假方案
  */
 
-import { isHoliday, isWeekEnd } from '@swjs/chinese-holidays';
+import { isHoliday, isWeekEnd, isWorkingDay } from '@swjs/chinese-holidays';
 import dayjs from 'dayjs';
 
 // 休假方案接口
@@ -42,19 +26,18 @@ export interface IDateInfo {
   date: string;
   isWeekend: boolean;
   isHoliday: boolean;
-  isWorkday: boolean;
+  isWorkingDay: boolean;
 }
 
 // 休假约束条件接口
 export interface IVacationConstraints {
-  // 不可休假的日期列表
   excludedDates?: string[];
-  // 在指定日期范围内必须休假的约束
   mandatoryVacationWithinRange?: {
     startDate: string;
     endDate: string;
     days: number;
   }[];
+  maxContinuousVacationDays?: number;
 }
 
 /**
@@ -70,12 +53,13 @@ async function getDateInfos(startDate: string, endDate: string): Promise<IDateIn
     const dateStr = current.format('YYYY-MM-DD');
     const isWeekend = await isWeekEnd(dateStr);
     const isHolidayDay = await isHoliday(dateStr);
+    const isActualWorkingDay = await isWorkingDay(dateStr);
 
     dateInfos.push({
       date: dateStr,
       isWeekend,
       isHoliday: isHolidayDay,
-      isWorkday: !isWeekend && !isHolidayDay,
+      isWorkingDay: isActualWorkingDay,
     });
 
     current = current.add(1, 'day');
@@ -85,184 +69,61 @@ async function getDateInfos(startDate: string, endDate: string): Promise<IDateIn
 }
 
 /**
- * 获取强制休假区间内的可用工作日
+ * 计算连续休假段的长度（只计算实际休假天数）
  */
-function getAvailableWorkdaysInRange(
-  dateInfos: IDateInfo[],
-  startDate: string,
-  endDate: string,
-  excludedDates: string[] = []
-): string[] {
-  const start = dayjs(startDate);
-  const end = dayjs(endDate);
+function calculateContinuousVacationSegments(
+  vacationDates: string[],
+  dateInfos: IDateInfo[]
+): number[] {
+  const vacationSet = new Set(vacationDates);
+  const segments: number[] = [];
+  let currentSegment = 0;
+  let inSegment = false;
 
-  return dateInfos
-    .filter(dateInfo => {
-      const date = dayjs(dateInfo.date);
-      return (
-        dateInfo.isWorkday &&
-        !excludedDates.includes(dateInfo.date) &&
-        (date.isSame(start) || date.isAfter(start)) &&
-        (date.isSame(end) || date.isBefore(end))
-      );
-    })
-    .map(dateInfo => dateInfo.date);
-}
-
-/**
- * 处理强制休假约束，优先分配强制休假日期
- */
-function handleMandatoryVacationConstraints(
-  dateInfos: IDateInfo[],
-  constraints: IVacationConstraints,
-  totalVacationDays: number
-): {
-  mandatoryVacationDates: string[];
-  remainingVacationDays: number;
-  availableWorkdays: string[];
-  isValid: boolean;
-} {
-  const mandatoryVacationDates: string[] = [];
-  const excludedDates = constraints.excludedDates ?? [];
-  let remainingVacationDays = totalVacationDays;
-
-  // 处理每个强制休假区间
-  if (constraints.mandatoryVacationWithinRange) {
-    for (const mandatory of constraints.mandatoryVacationWithinRange) {
-      const availableWorkdaysInRange = getAvailableWorkdaysInRange(
-        dateInfos,
-        mandatory.startDate,
-        mandatory.endDate,
-        excludedDates
-      );
-
-      // 检查是否有足够的工作日满足强制休假要求
-      if (availableWorkdaysInRange.length < mandatory.days) {
-        return {
-          mandatoryVacationDates: [],
-          remainingVacationDays: 0,
-          availableWorkdays: [],
-          isValid: false,
-        };
+  for (const dateInfo of dateInfos) {
+    if (vacationSet.has(dateInfo.date)) {
+      currentSegment++;
+      inSegment = true;
+    } else if (!dateInfo.isWorkingDay) {
+      // 非工作日：继续段但不计入休假天数
+    } else {
+      // 工作日且不是休假日：结束当前段
+      if (inSegment && currentSegment > 0) {
+        segments.push(currentSegment);
       }
-
-      // 检查是否有足够的总休假天数
-      if (remainingVacationDays < mandatory.days) {
-        return {
-          mandatoryVacationDates: [],
-          remainingVacationDays: 0,
-          availableWorkdays: [],
-          isValid: false,
-        };
-      }
-
-      // 智能选择强制休假日期（优先选择能形成连续假期的日期）
-      const selectedDatesInRange = selectOptimalDatesInRange(
-        availableWorkdaysInRange,
-        dateInfos,
-        mandatory.days
-      );
-
-      mandatoryVacationDates.push(...selectedDatesInRange);
-      remainingVacationDays -= selectedDatesInRange.length;
+      currentSegment = 0;
+      inSegment = false;
     }
   }
 
-  // 获取剩余可用的工作日（排除已选择的强制休假日期）
-  const availableWorkdays = dateInfos
-    .filter(
-      dateInfo =>
-        dateInfo.isWorkday &&
-        !excludedDates.includes(dateInfo.date) &&
-        !mandatoryVacationDates.includes(dateInfo.date)
-    )
-    .map(dateInfo => dateInfo.date);
-
-  return {
-    mandatoryVacationDates,
-    remainingVacationDays,
-    availableWorkdays,
-    isValid: true,
-  };
-}
-
-/**
- * 在指定范围内智能选择最优的休假日期
- */
-function selectOptimalDatesInRange(
-  availableWorkdays: string[],
-  dateInfos: IDateInfo[],
-  requiredDays: number
-): string[] {
-  // 如果需要的天数等于可用天数，直接返回所有可用日期
-  if (requiredDays >= availableWorkdays.length) {
-    return availableWorkdays;
+  if (inSegment && currentSegment > 0) {
+    segments.push(currentSegment);
   }
 
-  // 为每个可用工作日计算优先级分数
-  const scoredDates = availableWorkdays.map(date => {
-    let score = 0;
-    const currentDay = dayjs(date);
-
-    // 检查前后日期以计算连续假期潜力
-    for (let i = -2; i <= 2; i++) {
-      if (i === 0) continue;
-
-      const checkDate = currentDay.add(i, 'day').format('YYYY-MM-DD');
-      const checkDateInfo = dateInfos.find(d => d.date === checkDate);
-
-      if (checkDateInfo && !checkDateInfo.isWorkday) {
-        // 邻近节假日或周末的日期得分更高
-        const distance = Math.abs(i);
-        if (checkDateInfo.isHoliday) {
-          score += 20 / distance;
-        } else if (checkDateInfo.isWeekend) {
-          score += 10 / distance;
-        }
-      }
-    }
-
-    return { date, score };
-  });
-
-  // 按分数排序并选择最优的日期
-  scoredDates.sort((a, b) => b.score - a.score);
-  return scoredDates.slice(0, requiredDays).map(item => item.date);
+  return segments;
 }
 
 /**
  * 验证休假方案是否满足约束条件
  */
-function validateVacationConstraints(
+function validateConstraints(
   vacationDates: string[],
+  dateInfos: IDateInfo[],
   constraints?: IVacationConstraints
 ): boolean {
-  if (!constraints) {
-    return true;
-  }
+  if (!constraints) return true;
 
-  // 检查是否有不可休假的日期
-  const excludedDates = constraints.excludedDates ?? [];
-  if (excludedDates.some(date => vacationDates.includes(date))) {
+  // 检查不可休假日期
+  if (constraints.excludedDates?.some(date => vacationDates.includes(date))) {
     return false;
   }
 
-  // 检查"指定日期范围内必须休n天假"的约束
-  if (constraints.mandatoryVacationWithinRange) {
-    for (const mandatory of constraints.mandatoryVacationWithinRange) {
-      const startDate = dayjs(mandatory.startDate);
-      const endDate = dayjs(mandatory.endDate);
-      const vacationWithinRange = vacationDates.filter(date => {
-        const vacationDate = dayjs(date);
-        return (
-          (vacationDate.isSame(startDate) || vacationDate.isAfter(startDate)) &&
-          (vacationDate.isSame(endDate) || vacationDate.isBefore(endDate))
-        );
-      });
-
-      if (vacationWithinRange.length < mandatory.days) {
-        return false;
-      }
+  // 检查连续休假限制
+  if (constraints.maxContinuousVacationDays !== undefined) {
+    const segments = calculateContinuousVacationSegments(vacationDates, dateInfos);
+    const maxSegment = Math.max(...segments, 0);
+    if (maxSegment > constraints.maxContinuousVacationDays) {
+      return false;
     }
   }
 
@@ -270,136 +131,197 @@ function validateVacationConstraints(
 }
 
 /**
- * 计算休假方案的得分
+ * 计算休假方案的总假期天数
  */
-function calculateScore(vacationDates: string[], dateInfos: IDateInfo[]): number {
-  let score = 0;
+function calculateTotalHolidayDays(vacationDates: string[], dateInfos: IDateInfo[]): number {
   const vacationSet = new Set(vacationDates);
-
-  // 基础得分：每个休假日 +10 分
-  score += vacationDates.length * 10;
-
-  // 连续休假奖励
-  let continuousCount = 0;
-  let maxContinuous = 0;
-  let totalContinuousScore = 0;
+  let totalDays = 0;
+  let inHolidayPeriod = false;
 
   for (const dateInfo of dateInfos) {
-    if (vacationSet.has(dateInfo.date) || !dateInfo.isWorkday) {
-      continuousCount++;
-      maxContinuous = Math.max(maxContinuous, continuousCount);
-    } else {
-      if (continuousCount > 0) {
-        // 连续假期的奖励是指数级的，长假期奖励更高
-        totalContinuousScore += Math.pow(continuousCount, 1.5) * 3;
+    if (vacationSet.has(dateInfo.date) || !dateInfo.isWorkingDay) {
+      if (!inHolidayPeriod) {
+        inHolidayPeriod = true;
       }
-      continuousCount = 0;
+      totalDays++;
+    } else if (inHolidayPeriod) {
+      inHolidayPeriod = false;
     }
   }
 
-  // 处理最后一个连续假期
-  if (continuousCount > 0) {
-    totalContinuousScore += Math.pow(continuousCount, 1.5) * 3;
-  }
-
-  score += totalContinuousScore;
-
-  // 节假日连接奖励 - 大幅提升
-  let holidayConnectionBonus = 0;
-
-  for (const vacationDate of vacationDates) {
-    const vacationDay = dayjs(vacationDate);
-    const prevDay = vacationDay.subtract(1, 'day').format('YYYY-MM-DD');
-    const nextDay = vacationDay.add(1, 'day').format('YYYY-MM-DD');
-
-    const prevDayInfo = dateInfos.find(d => d.date === prevDay);
-    const nextDayInfo = dateInfos.find(d => d.date === nextDay);
-
-    // 如果休假日前后是节假日，给予高额奖励
-    if (prevDayInfo?.isHoliday) {
-      holidayConnectionBonus += 25; // 节假日连接奖励提升
-    }
-    if (nextDayInfo?.isHoliday) {
-      holidayConnectionBonus += 25; // 节假日连接奖励提升
-    }
-
-    // 如果休假日前后是周末，给予中等奖励
-    if (prevDayInfo && prevDayInfo.isWeekend && !prevDayInfo.isHoliday) {
-      holidayConnectionBonus += 15;
-    }
-    if (nextDayInfo && nextDayInfo.isWeekend && !nextDayInfo.isHoliday) {
-      holidayConnectionBonus += 15;
-    }
-  }
-
-  score += holidayConnectionBonus;
-
-  // 黄金周奖励：如果形成了5天以上的连续假期，给予特别奖励
-  if (maxContinuous >= 5) {
-    score += 50; // 黄金周奖励
-  }
-  if (maxContinuous >= 7) {
-    score += 100; // 超长假期奖励
-  }
-
-  return score;
+  return totalDays;
 }
 
 /**
- * 生成所有可能的休假组合
+ * 找出长假期（3天以上的连续非工作日）
  */
-function generateVacationCombinations(workdays: string[], vacationDays: number): string[][] {
-  const combinations: string[][] = [];
-
-  function backtrack(start: number, current: string[]): void {
-    if (current.length === vacationDays) {
-      combinations.push([...current]);
-      return;
-    }
-
-    for (let i = start; i < workdays.length; i++) {
-      current.push(workdays[i]);
-      backtrack(i + 1, current);
-      current.pop();
-    }
-  }
-
-  backtrack(0, []);
-  return combinations;
-}
-
-/**
- * 计算连续休假天数
- */
-function calculateContinuousDays(vacationDates: string[], dateInfos: IDateInfo[]): number {
-  const vacationSet = new Set(vacationDates);
-  let maxContinuous = 0;
-  let currentContinuous = 0;
+function findLongHolidays(
+  dateInfos: IDateInfo[]
+): { start: string; end: string; dates: string[] }[] {
+  const holidays: { start: string; end: string; dates: string[] }[] = [];
+  let currentHoliday: string[] = [];
 
   for (const dateInfo of dateInfos) {
-    if (vacationSet.has(dateInfo.date) || !dateInfo.isWorkday) {
-      currentContinuous++;
-      maxContinuous = Math.max(maxContinuous, currentContinuous);
+    if (!dateInfo.isWorkingDay) {
+      currentHoliday.push(dateInfo.date);
     } else {
-      currentContinuous = 0;
+      if (currentHoliday.length >= 3) {
+        holidays.push({
+          start: currentHoliday[0],
+          end: currentHoliday[currentHoliday.length - 1],
+          dates: [...currentHoliday],
+        });
+      }
+      currentHoliday = [];
     }
   }
 
-  return maxContinuous;
+  if (currentHoliday.length >= 3) {
+    holidays.push({
+      start: currentHoliday[0],
+      end: currentHoliday[currentHoliday.length - 1],
+      dates: [...currentHoliday],
+    });
+  }
+
+  return holidays;
 }
 
 /**
- * 生成休假方案描述
+ * 智能选择休假日期
+ */
+function selectOptimalVacationDates(
+  dateInfos: IDateInfo[],
+  vacationDays: number,
+  constraints?: IVacationConstraints
+): string[] {
+  // 获取所有可休假的工作日
+  const workingDays = dateInfos
+    .filter(d => d.isWorkingDay && !constraints?.excludedDates?.includes(d.date))
+    .map(d => d.date);
+
+  // 找出长假期
+  const longHolidays = findLongHolidays(dateInfos);
+
+  let bestCombination: string[] = [];
+  let bestEfficiency = 0;
+
+  // 针对每个长假期，尝试前后连接的组合
+  for (const holiday of longHolidays) {
+    const holidayStart = dayjs(holiday.start);
+    const holidayEnd = dayjs(holiday.end);
+
+    // 找出假期前后的工作日
+    const beforeDays = workingDays
+      .filter(date => dayjs(date).isBefore(holidayStart))
+      .slice(-vacationDays); // 最多取vacationDays个
+
+    const afterDays = workingDays
+      .filter(date => dayjs(date).isAfter(holidayEnd))
+      .slice(0, vacationDays); // 最多取vacationDays个
+
+    // 生成前后组合
+    for (
+      let beforeCount = 0;
+      beforeCount <= Math.min(beforeDays.length, vacationDays);
+      beforeCount++
+    ) {
+      for (
+        let afterCount = 0;
+        afterCount <= Math.min(afterDays.length, vacationDays - beforeCount);
+        afterCount++
+      ) {
+        if (beforeCount + afterCount === vacationDays && beforeCount + afterCount > 0) {
+          const combination = [
+            ...beforeDays.slice(-beforeCount),
+            ...afterDays.slice(0, afterCount),
+          ];
+
+          // 验证约束条件
+          if (validateConstraints(combination, dateInfos, constraints)) {
+            const totalHolidays = calculateTotalHolidayDays(combination, dateInfos);
+            const efficiency = totalHolidays / combination.length;
+
+            if (efficiency > bestEfficiency) {
+              bestEfficiency = efficiency;
+              bestCombination = combination;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 如果没有找到好的组合，使用贪心算法
+  if (bestCombination.length === 0) {
+    bestCombination = selectGreedyVacation(workingDays, vacationDays, dateInfos, constraints);
+  }
+
+  return bestCombination;
+}
+
+/**
+ * 贪心算法选择休假日期
+ */
+function selectGreedyVacation(
+  workingDays: string[],
+  vacationDays: number,
+  dateInfos: IDateInfo[],
+  constraints?: IVacationConstraints
+): string[] {
+  // 为每个工作日评分
+  const scoredDays = workingDays.map(date => {
+    let score = 0;
+    const dateInfo = dateInfos.find(d => d.date === date)!;
+    const currentDay = dayjs(date);
+
+    // 调休上班日高分
+    if (dateInfo.isWeekend) {
+      score += 100;
+    }
+
+    // 检查与非工作日的邻近程度
+    for (let i = -3; i <= 3; i++) {
+      if (i === 0) continue;
+      const checkDate = currentDay.add(i, 'day').format('YYYY-MM-DD');
+      const checkDateInfo = dateInfos.find(d => d.date === checkDate);
+
+      if (checkDateInfo && !checkDateInfo.isWorkingDay) {
+        const distance = Math.abs(i);
+        score += checkDateInfo.isHoliday ? 30 / distance : 10 / distance;
+      }
+    }
+
+    return { date, score };
+  });
+
+  scoredDays.sort((a, b) => b.score - a.score);
+
+  // 贪心选择
+  const selected: string[] = [];
+  for (const candidate of scoredDays) {
+    if (selected.length >= vacationDays) break;
+
+    const testDates = [...selected, candidate.date];
+    if (validateConstraints(testDates, dateInfos, constraints)) {
+      selected.push(candidate.date);
+    }
+  }
+
+  return selected;
+}
+
+/**
+ * 生成方案描述
  */
 function generateDescription(vacationDates: string[], dateInfos: IDateInfo[]): string {
   const vacationSet = new Set(vacationDates);
   const descriptions: string[] = [];
-
   let currentStreak: string[] = [];
   let streakStart = '';
 
   for (const dateInfo of dateInfos) {
-    if (vacationSet.has(dateInfo.date) || !dateInfo.isWorkday) {
+    if (vacationSet.has(dateInfo.date) || !dateInfo.isWorkingDay) {
       if (currentStreak.length === 0) {
         streakStart = dateInfo.date;
       }
@@ -407,24 +329,23 @@ function generateDescription(vacationDates: string[], dateInfos: IDateInfo[]): s
     } else {
       if (currentStreak.length > 0) {
         const streakEnd = currentStreak[currentStreak.length - 1];
-        if (streakStart === streakEnd) {
-          descriptions.push(`${streakStart} (1天)`);
-        } else {
-          descriptions.push(`${streakStart} 至 ${streakEnd} (${currentStreak.length}天)`);
-        }
+        descriptions.push(
+          streakStart === streakEnd
+            ? `${streakStart} (1天)`
+            : `${streakStart} 至 ${streakEnd} (${currentStreak.length}天)`
+        );
         currentStreak = [];
       }
     }
   }
 
-  // 处理最后一个连续假期
   if (currentStreak.length > 0) {
     const streakEnd = currentStreak[currentStreak.length - 1];
-    if (streakStart === streakEnd) {
-      descriptions.push(`${streakStart} (1天)`);
-    } else {
-      descriptions.push(`${streakStart} 至 ${streakEnd} (${currentStreak.length}天)`);
-    }
+    descriptions.push(
+      streakStart === streakEnd
+        ? `${streakStart} (1天)`
+        : `${streakStart} 至 ${streakEnd} (${currentStreak.length}天)`
+    );
   }
 
   return descriptions.join(', ');
@@ -439,664 +360,28 @@ export async function calculateBestVacationPlan(
   vacationDays: number,
   constraints?: IVacationConstraints
 ): Promise<IVacationPlan[]> {
-  // 获取日期范围内的所有日期信息
   const dateInfos = await getDateInfos(startDate, endDate);
+  const vacationDates = selectOptimalVacationDates(dateInfos, vacationDays, constraints);
 
-  // 如果有强制休假约束，优先处理
-  if (constraints?.mandatoryVacationWithinRange?.length) {
-    const mandatoryResult = handleMandatoryVacationConstraints(
-      dateInfos,
-      constraints,
-      vacationDays
-    );
-
-    if (!mandatoryResult.isValid) {
-      // 如果无法满足强制休假约束，返回空数组
-      return [];
-    }
-
-    // 如果所有休假天数都被强制休假约束占用
-    if (mandatoryResult.remainingVacationDays === 0) {
-      const plan: IVacationPlan = {
-        dates: mandatoryResult.mandatoryVacationDates.sort(),
-        score: calculateScore(mandatoryResult.mandatoryVacationDates, dateInfos),
-        totalDays: vacationDays,
-        continuousDays: calculateContinuousDays(mandatoryResult.mandatoryVacationDates, dateInfos),
-        description: generateDescription(mandatoryResult.mandatoryVacationDates, dateInfos),
-      };
-      return [plan];
-    }
-
-    // 对剩余的休假天数使用优化算法
-    return calculateOptimalPlanWithMandatoryDates(
-      dateInfos,
-      mandatoryResult.mandatoryVacationDates,
-      mandatoryResult.availableWorkdays,
-      mandatoryResult.remainingVacationDays,
-      vacationDays
-    );
-  }
-
-  // 没有强制休假约束时，使用原有逻辑
-  return await calculateBestVacationPlanOriginal(startDate, endDate, vacationDays, constraints);
-}
-
-/**
- * 策略2的过滤版本：从可用工作日中选择能形成最长连续假期的工作日
- */
-function selectVacationDaysStrategy2Filtered(
-  dateInfos: IDateInfo[],
-  vacationDays: number,
-  availableWorkdays: string[]
-): string[] {
-  const selected: string[] = [];
-  const availableSet = new Set(availableWorkdays);
-
-  // 找到所有可能的连续工作日段（仅包含可用工作日）
-  const workdaySegments: string[][] = [];
-  let currentSegment: string[] = [];
-
-  for (const dateInfo of dateInfos) {
-    if (dateInfo.isWorkday && availableSet.has(dateInfo.date)) {
-      currentSegment.push(dateInfo.date);
-    } else {
-      if (currentSegment.length > 0) {
-        workdaySegments.push([...currentSegment]);
-        currentSegment = [];
-      }
-    }
-  }
-
-  if (currentSegment.length > 0) {
-    workdaySegments.push(currentSegment);
-  }
-
-  // 按段长度排序
-  workdaySegments.sort((a, b) => b.length - a.length);
-
-  // 从最长的段开始选择
-  let remaining = vacationDays;
-  for (const segment of workdaySegments) {
-    if (remaining <= 0) break;
-
-    const toSelect = Math.min(remaining, segment.length);
-    selected.push(...segment.slice(0, toSelect));
-    remaining -= toSelect;
-  }
-
-  return selected;
-}
-
-/**
- * 在已有强制休假日期的基础上，优化剩余休假天数的分配
- */
-function calculateOptimalPlanWithMandatoryDates(
-  dateInfos: IDateInfo[],
-  mandatoryVacationDates: string[],
-  availableWorkdays: string[],
-  remainingVacationDays: number,
-  totalVacationDays: number
-): IVacationPlan[] {
-  const plans: IVacationPlan[] = [];
-
-  if (remainingVacationDays === 0) {
-    // 没有剩余天数，直接返回强制休假方案
-    const plan: IVacationPlan = {
-      dates: mandatoryVacationDates.sort(),
-      score: calculateScore(mandatoryVacationDates, dateInfos),
-      totalDays: totalVacationDays,
-      continuousDays: calculateContinuousDays(mandatoryVacationDates, dateInfos),
-      description: generateDescription(mandatoryVacationDates, dateInfos),
-    };
-    return [plan];
-  }
-
-  // 使用不同策略为剩余天数选择最优日期
-  const strategies: (() => string[])[] = [
-    (): string[] =>
-      selectVacationDaysStrategy1(availableWorkdays, dateInfos, remainingVacationDays),
-    (): string[] =>
-      selectVacationDaysStrategy2Filtered(dateInfos, remainingVacationDays, availableWorkdays),
-    (): string[] => selectVacationDaysStrategy3(availableWorkdays, remainingVacationDays),
-    (): string[] =>
-      selectVacationDaysStrategy4(availableWorkdays, dateInfos, remainingVacationDays),
-  ];
-
-  for (const strategy of strategies) {
-    const selectedDates = strategy();
-    const totalDates = [...mandatoryVacationDates, ...selectedDates];
-
-    if (totalDates.length === totalVacationDays) {
-      const plan: IVacationPlan = {
-        dates: totalDates.sort(),
-        score: calculateScore(totalDates, dateInfos),
-        totalDays: totalVacationDays,
-        continuousDays: calculateContinuousDays(totalDates, dateInfos),
-        description: generateDescription(totalDates, dateInfos),
-      };
-      plans.push(plan);
-    }
-  }
-
-  // 去重并按得分排序
-  const uniquePlans = plans.filter(
-    (plan, index, self) =>
-      index ===
-      self.findIndex(
-        p => p.dates.length === plan.dates.length && p.dates.every(d => plan.dates.includes(d))
-      )
-  );
-
-  return uniquePlans.sort((a, b) => b.score - a.score);
-}
-
-/**
- * 原始的最佳休假方案计算（没有强制休假约束时使用）
- */
-async function calculateBestVacationPlanOriginal(
-  startDate: string,
-  endDate: string,
-  vacationDays: number,
-  constraints?: IVacationConstraints
-): Promise<IVacationPlan[]> {
-  // 获取日期范围内的所有日期信息
-  const dateInfos = await getDateInfos(startDate, endDate);
-
-  // 获取所有工作日，并排除不可休假的日期
-  let workdays = dateInfos.filter(d => d.isWorkday).map(d => d.date);
-
-  // 排除不可休假的日期
-  const excludedDates = constraints?.excludedDates ?? [];
-  if (excludedDates.length > 0) {
-    workdays = workdays.filter(date => !excludedDates.includes(date));
-  }
-
-  // 如果休假天数超过可用工作日天数，返回空数组
-  if (vacationDays > workdays.length) {
+  if (vacationDates.length === 0) {
     return [];
   }
 
-  // 如果工作日数量较少，可以枚举所有组合
-  if (workdays.length <= 20) {
-    const combinations = generateVacationCombinations(workdays, vacationDays);
-    const plans: IVacationPlan[] = [];
-
-    for (const combination of combinations) {
-      // 验证是否满足约束条件
-      if (!validateVacationConstraints(combination, constraints)) {
-        continue;
-      }
-
-      const score = calculateScore(combination, dateInfos);
-      const continuousDays = calculateContinuousDays(combination, dateInfos);
-      const description = generateDescription(combination, dateInfos);
-
-      plans.push({
-        dates: combination,
-        score,
-        totalDays: vacationDays,
-        continuousDays,
-        description,
-      });
-    }
-
-    // 按得分降序排序
-    return plans.sort((a, b) => b.score - a.score);
-  } else {
-    // 对于工作日数量较多的情况，使用贪心算法
-    return await calculateBestVacationPlanGreedy(startDate, endDate, vacationDays, constraints);
-  }
-}
-
-/**
- * 贪心算法计算最佳休假方案（适用于日期范围较大的情况）
- */
-async function calculateBestVacationPlanGreedy(
-  startDate: string,
-  endDate: string,
-  vacationDays: number,
-  constraints?: IVacationConstraints
-): Promise<IVacationPlan[]> {
-  const dateInfos = await getDateInfos(startDate, endDate);
-  let workdays = dateInfos.filter(d => d.isWorkday).map(d => d.date);
-
-  // 排除不可休假的日期
-  const excludedDates = constraints?.excludedDates ?? [];
-  if (excludedDates.length > 0) {
-    workdays = workdays.filter(date => !excludedDates.includes(date));
-  }
-
-  // 策略1：智能节假日连接策略
-  const vacationDates1 = selectVacationDaysStrategy1(workdays, dateInfos, vacationDays);
-
-  // 策略2：优先选择能形成最长连续假期的工作日
-  const vacationDates2 = selectVacationDaysStrategy2(dateInfos, vacationDays);
-
-  // 策略3：均匀分布策略
-  const vacationDates3 = selectVacationDaysStrategy3(workdays, vacationDays);
-
-  // 策略4：黄金周策略
-  const vacationDates4 = selectVacationDaysStrategy4(workdays, dateInfos, vacationDays);
-
-  const plans: IVacationPlan[] = [];
-
-  for (const vacationDates of [vacationDates1, vacationDates2, vacationDates3, vacationDates4]) {
-    if (vacationDates.length > 0 && validateVacationConstraints(vacationDates, constraints)) {
-      const score = calculateScore(vacationDates, dateInfos);
-      const continuousDays = calculateContinuousDays(vacationDates, dateInfos);
-      const description = generateDescription(vacationDates, dateInfos);
-
-      plans.push({
-        dates: vacationDates,
-        score,
-        totalDays: vacationDays,
-        continuousDays,
-        description,
-      });
-    }
-  }
-
-  // 去重并按得分排序
-  const uniquePlans = plans.filter(
-    (plan, index, self) =>
-      index ===
-      self.findIndex(
-        p => p.dates.length === plan.dates.length && p.dates.every(d => plan.dates.includes(d))
-      )
-  );
-
-  return uniquePlans.sort((a, b) => b.score - a.score);
-}
-
-/**
- * 策略1：智能节假日连接策略
- */
-function selectVacationDaysStrategy1(
-  workdays: string[],
-  dateInfos: IDateInfo[],
-  vacationDays: number
-): string[] {
-  const selected: string[] = [];
-  const candidates = [...workdays];
-
-  // 找出所有节假日群组
-  const holidayGroups = findHolidayGroups(dateInfos);
-
-  // 计算每个工作日的优先级
-  const priorities = candidates.map(date => {
-    let priority = 0;
-
-    // 基础优先级：与节假日的连接能力
-    const connectionScore = calculateHolidayConnectionScore(date, dateInfos, holidayGroups);
-    priority += connectionScore;
-
-    // 桥接奖励：如果这个工作日能连接两个节假日群组
-    const bridgeScore = calculateBridgeScore(date, holidayGroups);
-    priority += bridgeScore;
-
-    // 群组扩展奖励：如果选择这个日期能显著延长假期
-    const extensionScore = calculateExtensionScore(date, selected);
-    priority += extensionScore;
-
-    return { date, priority };
-  });
-
-  // 按优先级排序
-  priorities.sort((a, b) => b.priority - a.priority);
-
-  // 智能选择：不仅考虑单个优先级，还要考虑组合效果
-  const remainingDays = vacationDays;
-  const selectedDates = selectOptimalCombination(priorities, remainingDays);
-
-  return selectedDates;
-}
-
-/**
- * 找出所有节假日群组
- */
-function findHolidayGroups(dateInfos: IDateInfo[]): string[][] {
-  const groups: string[][] = [];
-  let currentGroup: string[] = [];
-
-  for (const dateInfo of dateInfos) {
-    if (!dateInfo.isWorkday) {
-      // 节假日或周末
-      currentGroup.push(dateInfo.date);
-    } else {
-      if (currentGroup.length > 0) {
-        groups.push([...currentGroup]);
-        currentGroup = [];
-      }
-    }
-  }
-
-  if (currentGroup.length > 0) {
-    groups.push(currentGroup);
-  }
-
-  return groups;
-}
-
-/**
- * 计算与节假日的连接分数
- */
-function calculateHolidayConnectionScore(
-  date: string,
-  dateInfos: IDateInfo[],
-  holidayGroups: string[][]
-): number {
-  let score = 0;
-  const currentDay = dayjs(date);
-
-  // 检查前后3天范围内的节假日
-  for (let i = -3; i <= 3; i++) {
-    if (i === 0) continue; // 跳过当前日期
-
-    const checkDate = currentDay.add(i, 'day').format('YYYY-MM-DD');
-    const checkDateInfo = dateInfos.find(d => d.date === checkDate);
-
-    if (checkDateInfo && !checkDateInfo.isWorkday) {
-      // 距离越近，奖励越高
-      const distance = Math.abs(i);
-      if (checkDateInfo.isHoliday) {
-        score += 10 / distance; // 节假日奖励更高
-      } else if (checkDateInfo.isWeekend) {
-        score += 5 / distance; // 周末奖励中等
-      }
-    }
-  }
-
-  // 额外奖励：如果这个日期能连接较长的节假日群组
-  for (const group of holidayGroups) {
-    if (group.length >= 2) {
-      // 只考虑2天以上的群组
-      const groupStart = dayjs(group[0]);
-      const groupEnd = dayjs(group[group.length - 1]);
-
-      // 如果当前日期紧邻节假日群组
-      if (
-        currentDay.isSame(groupStart.subtract(1, 'day')) ||
-        currentDay.isSame(groupEnd.add(1, 'day'))
-      ) {
-        score += group.length * 5; // 群组越长，奖励越高
-      }
-    }
-  }
-
-  return score;
-}
-
-/**
- * 计算桥接分数：连接两个节假日群组的能力
- */
-function calculateBridgeScore(date: string, holidayGroups: string[][]): number {
-  let score = 0;
-  const currentDay = dayjs(date);
-
-  // 检查是否能连接两个节假日群组
-  for (const group of holidayGroups) {
-    const groupStart = dayjs(group[0]);
-    const groupEnd = dayjs(group[group.length - 1]);
-
-    // 如果当前日期在两个群组之间
-    if (
-      currentDay.isAfter(groupStart.subtract(4, 'day')) &&
-      currentDay.isBefore(groupEnd.add(4, 'day'))
-    ) {
-      score += 15; // 桥接奖励
-    }
-  }
-
-  return score;
-}
-
-/**
- * 计算扩展分数：延长现有假期的能力
- */
-function calculateExtensionScore(date: string, selectedDates: string[]): number {
-  let score = 0;
-  const currentDay = dayjs(date);
-
-  // 检查是否能延长现有的选择
-  for (const selectedDate of selectedDates) {
-    const selectedDay = dayjs(selectedDate);
-    const daysDiff = Math.abs(currentDay.diff(selectedDay, 'day'));
-
-    if (daysDiff <= 3) {
-      score += 8 / daysDiff; // 距离越近，扩展价值越高
-    }
-  }
-
-  return score;
-}
-
-/**
- * 选择最优组合
- */
-function selectOptimalCombination(
-  priorities: { date: string; priority: number }[],
-  vacationDays: number
-): string[] {
-  const selected: string[] = [];
-  const candidates = [...priorities];
-
-  // 贪心算法：每次选择当前最优的日期
-  for (let i = 0; i < vacationDays && candidates.length > 0; i++) {
-    // 重新计算优先级（考虑已选择的日期）
-    candidates.forEach(candidate => {
-      const extensionScore = calculateExtensionScore(candidate.date, selected);
-      candidate.priority += extensionScore;
-    });
-
-    // 排序并选择最优日期
-    candidates.sort((a, b) => b.priority - a.priority);
-    const bestCandidate = candidates.shift();
-
-    if (bestCandidate) {
-      selected.push(bestCandidate.date);
-    }
-  }
-
-  return selected;
-}
-
-/**
- * 策略2：优先选择能形成最长连续假期的工作日
- */
-function selectVacationDaysStrategy2(dateInfos: IDateInfo[], vacationDays: number): string[] {
-  const selected: string[] = [];
-
-  // 找到所有可能的连续工作日段
-  const workdaySegments: string[][] = [];
-  let currentSegment: string[] = [];
-
-  for (const dateInfo of dateInfos) {
-    if (dateInfo.isWorkday) {
-      currentSegment.push(dateInfo.date);
-    } else {
-      if (currentSegment.length > 0) {
-        workdaySegments.push([...currentSegment]);
-        currentSegment = [];
-      }
-    }
-  }
-
-  if (currentSegment.length > 0) {
-    workdaySegments.push(currentSegment);
-  }
-
-  // 按段长度排序
-  workdaySegments.sort((a, b) => b.length - a.length);
-
-  // 从最长的段开始选择
-  let remaining = vacationDays;
-  for (const segment of workdaySegments) {
-    if (remaining <= 0) break;
-
-    const toSelect = Math.min(remaining, segment.length);
-    selected.push(...segment.slice(0, toSelect));
-    remaining -= toSelect;
-  }
-
-  return selected;
-}
-
-/**
- * 策略3：均匀分布策略
- */
-function selectVacationDaysStrategy3(workdays: string[], vacationDays: number): string[] {
-  const selected: string[] = [];
-
-  if (vacationDays >= workdays.length) {
-    return [...workdays];
-  }
-
-  // 均匀分布选择
-  const step = Math.floor(workdays.length / vacationDays);
-  for (let i = 0; i < vacationDays; i++) {
-    const index = Math.min(i * step, workdays.length - 1);
-    selected.push(workdays[index]);
-  }
-
-  return selected;
-}
-
-/**
- * 策略4：黄金周策略 - 专门针对节假日连接优化
- */
-function selectVacationDaysStrategy4(
-  workdays: string[],
-  dateInfos: IDateInfo[],
-  vacationDays: number
-): string[] {
-  const selected: string[] = [];
-  const holidayGroups = findHolidayGroups(dateInfos);
-
-  // 找出最佳的节假日连接机会
-  const connectionOpportunities = findBestConnectionOpportunities(workdays, holidayGroups);
-
-  // 按价值排序连接机会
-  connectionOpportunities.sort((a, b) => b.value - a.value);
-
-  let remainingDays = vacationDays;
-
-  // 优先选择高价值的连接机会
-  for (const opportunity of connectionOpportunities) {
-    if (remainingDays <= 0) break;
-
-    const daysNeeded = opportunity.workdays.length;
-    if (daysNeeded <= remainingDays) {
-      selected.push(...opportunity.workdays);
-      remainingDays -= daysNeeded;
-    } else {
-      // 如果剩余天数不够，选择这个机会中最重要的几天
-      const sortedWorkdays = opportunity.workdays
-        .map(date => ({
-          date,
-          score: calculateHolidayConnectionScore(date, dateInfos, holidayGroups),
-        }))
-        .sort((a, b) => b.score - a.score);
-
-      for (let i = 0; i < remainingDays && i < sortedWorkdays.length; i++) {
-        selected.push(sortedWorkdays[i].date);
-      }
-      remainingDays = 0;
-    }
-  }
-
-  // 如果还有剩余天数，用常规策略补充
-  if (remainingDays > 0) {
-    const additionalDays = selectVacationDaysStrategy2(dateInfos, remainingDays);
-    selected.push(...additionalDays);
-  }
-
-  return selected;
-}
-
-/**
- * 找出最佳的节假日连接机会
- */
-function findBestConnectionOpportunities(
-  workdays: string[],
-  holidayGroups: string[][]
-): { workdays: string[]; value: number; description: string }[] {
-  const opportunities: { workdays: string[]; value: number; description: string }[] = [];
-
-  for (const group of holidayGroups) {
-    if (group.length === 0) continue;
-
-    const groupStart = dayjs(group[0]);
-    const groupEnd = dayjs(group[group.length - 1]);
-
-    // 检查群组前的连接机会
-    const beforeWorkdays = [];
-    for (let i = 1; i <= 5; i++) {
-      const checkDate = groupStart.subtract(i, 'day').format('YYYY-MM-DD');
-      if (workdays.includes(checkDate)) {
-        beforeWorkdays.unshift(checkDate);
-      } else {
-        break; // 遇到非工作日停止
-      }
-    }
-
-    if (beforeWorkdays.length > 0) {
-      const value = (group.length + beforeWorkdays.length) * beforeWorkdays.length * 10;
-      opportunities.push({
-        workdays: beforeWorkdays,
-        value,
-        description: `连接节假日群组前端，可形成${group.length + beforeWorkdays.length}天假期`,
-      });
-    }
-
-    // 检查群组后的连接机会
-    const afterWorkdays = [];
-    for (let i = 1; i <= 5; i++) {
-      const checkDate = groupEnd.add(i, 'day').format('YYYY-MM-DD');
-      if (workdays.includes(checkDate)) {
-        afterWorkdays.push(checkDate);
-      } else {
-        break; // 遇到非工作日停止
-      }
-    }
-
-    if (afterWorkdays.length > 0) {
-      const value = (group.length + afterWorkdays.length) * afterWorkdays.length * 10;
-      opportunities.push({
-        workdays: afterWorkdays,
-        value,
-        description: `连接节假日群组后端，可形成${group.length + afterWorkdays.length}天假期`,
-      });
-    }
-
-    // 检查桥接机会（连接两个节假日群组）
-    const nextGroupIndex = holidayGroups.indexOf(group) + 1;
-    if (nextGroupIndex < holidayGroups.length) {
-      const nextGroup = holidayGroups[nextGroupIndex];
-      const nextGroupStart = dayjs(nextGroup[0]);
-
-      const bridgeWorkdays = [];
-      let current = groupEnd.add(1, 'day');
-      while (current.isBefore(nextGroupStart)) {
-        const currentDateStr = current.format('YYYY-MM-DD');
-        if (workdays.includes(currentDateStr)) {
-          bridgeWorkdays.push(currentDateStr);
-        }
-        current = current.add(1, 'day');
-      }
-
-      if (bridgeWorkdays.length > 0 && bridgeWorkdays.length <= 3) {
-        const totalLength = group.length + bridgeWorkdays.length + nextGroup.length;
-        const value = totalLength * bridgeWorkdays.length * 15; // 桥接奖励更高
-        opportunities.push({
-          workdays: bridgeWorkdays,
-          value,
-          description: `桥接两个节假日群组，可形成${totalLength}天超长假期`,
-        });
-      }
-    }
-  }
-
-  return opportunities;
+  const totalHolidays = calculateTotalHolidayDays(vacationDates, dateInfos);
+  const segments = calculateContinuousVacationSegments(vacationDates, dateInfos);
+  const maxSegment = Math.max(...segments, 0);
+  const efficiency = totalHolidays / vacationDates.length;
+  const description = generateDescription(vacationDates, dateInfos);
+
+  return [
+    {
+      dates: vacationDates.sort(),
+      score: efficiency * 100, // 简化得分为效率
+      totalDays: vacationDays,
+      continuousDays: maxSegment,
+      description,
+    },
+  ];
 }
 
 /**
@@ -1121,15 +406,12 @@ export async function getVacationSuggestions(
   const bestPlans = await calculateBestVacationPlan(startDate, endDate, vacationDays, constraints);
 
   const summary = {
-    totalWorkdays: dateInfos.filter(d => d.isWorkday).length,
+    totalWorkdays: dateInfos.filter(d => d.isWorkingDay).length,
     totalHolidays: dateInfos.filter(d => d.isHoliday).length,
     totalWeekends: dateInfos.filter(d => d.isWeekend && !d.isHoliday).length,
     vacationDays,
     constraints,
   };
 
-  return {
-    bestPlans,
-    summary,
-  };
+  return { bestPlans, summary };
 }

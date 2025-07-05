@@ -52,6 +52,7 @@ interface IFormData {
     endDate: string;
     days: number;
   }[];
+  maxContinuousVacationDays?: number;
 }
 
 interface ICalculationResult {
@@ -78,6 +79,7 @@ export const VacationPlannerPage = memo(() => {
     vacationDays: 5,
     excludedDates: [],
     mandatoryRanges: [],
+    maxContinuousVacationDays: 5,
   });
 
   // 获取节假日和周末上班数据
@@ -117,6 +119,7 @@ export const VacationPlannerPage = memo(() => {
       const constraints: IVacationConstraints = {
         excludedDates: formData.excludedDates,
         mandatoryVacationWithinRange: formData.mandatoryRanges,
+        maxContinuousVacationDays: formData.maxContinuousVacationDays,
       };
 
       const calculationResult = await getVacationSuggestions(
@@ -242,6 +245,38 @@ export const VacationPlannerPage = memo(() => {
               </Form.Item>
 
               <Divider orientation="left">约束条件</Divider>
+              {/* 连续休假天数限制 */}
+              <Form.Item
+                label={
+                  <Space>
+                    <span>最大连续休假天数</span>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      (包含中间节假日/周末)
+                    </Text>
+                  </Space>
+                }
+              >
+                <InputNumber
+                  min={0}
+                  max={15}
+                  value={formData.maxContinuousVacationDays}
+                  onChange={value =>
+                    setFormData(prev => ({
+                      ...prev,
+                      maxContinuousVacationDays: value ?? undefined,
+                    }))
+                  }
+                  placeholder="不限制"
+                  addonAfter="天"
+                  className="vacation-planner__input-number"
+                />
+                <Text
+                  type="secondary"
+                  style={{ fontSize: '12px', display: 'block', marginTop: '4px' }}
+                >
+                  设置为0表示不允许连续休假，留空表示不限制
+                </Text>
+              </Form.Item>
 
               {/* 不可休假日期 */}
               <Form.Item label="不可休假日期">
@@ -592,6 +627,17 @@ export const VacationPlannerPage = memo(() => {
                             </Space>
                           </div>
                         )}
+
+                      {result.summary.constraints.maxContinuousVacationDays !== undefined && (
+                        <div>
+                          <Text strong>连续休假限制: </Text>
+                          <Tag color="purple">
+                            {result.summary.constraints.maxContinuousVacationDays === 0
+                              ? '不允许连续休假'
+                              : `最多连续休假 ${result.summary.constraints.maxContinuousVacationDays} 天`}
+                          </Tag>
+                        </div>
+                      )}
                     </Space>
                   </Card>
                 )}
