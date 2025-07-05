@@ -31,5 +31,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    reporters: ['default', 'html', 'json'],
+    outputFile: { html: './vitest/report/index.html', json: './vitest/report/test-results.json' },
   },
 });
