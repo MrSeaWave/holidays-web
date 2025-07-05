@@ -1,7 +1,9 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 
 export const NotFound = memo(() => {
-  return <div>Page</div>;
+  console.log('import.meta.env', import.meta.env);
+
+  return <div>NotFound</div>;
 });
 
 NotFound.displayName = 'NotFound';
