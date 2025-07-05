@@ -1,13 +1,13 @@
 import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
 
-import { HomePage } from '../pages/home-page/page';
+import { VacationPlannerPage } from '../pages/vacation-planner/page';
 
 const routes: RouteObject[] = [
   {
     id: 'root',
     path: '/',
-    Component: HomePage,
+    Component: VacationPlannerPage,
   },
   {
     path: '*',

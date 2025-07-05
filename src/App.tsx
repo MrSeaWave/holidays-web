@@ -13,6 +13,7 @@ import router from './routes';
 
 import './App.css';
 
+// eslint-disable-next-line import/no-named-as-default-member
 dayjs.locale('zh-cn');
 
 function App(): JSX.Element {

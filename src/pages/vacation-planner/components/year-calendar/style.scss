@@ -1,0 +1,374 @@
+// Mac风格年视图日历样式
+.year-calendar {
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+
+  &__header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 16px 0;
+    border-bottom: 1px solid #e8e8e8;
+  }
+
+  &__year-title {
+    margin: 0 !important;
+    color: #2c3e50;
+    font-weight: 300;
+    font-size: 28px;
+    letter-spacing: 1px;
+  }
+
+  // 12个月的网格布局
+  &__months-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    // 响应式布局
+    @media (width <= 1024px) {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    @media (width <= 768px) {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    @media (width <= 480px) {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  // 单个月份容器
+  &__month {
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+    transition: all 0.2s ease;
+    border: 1px solid #f0f0f0;
+
+    &:hover {
+      box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+      transform: translateY(-1px);
+    }
+  }
+
+  // 月份标题
+  &__month-header {
+    text-align: center;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #f5f5f5;
+  }
+
+  &__month-title {
+    font-size: 14px;
+    color: #595959;
+    margin: 0 !important;
+    font-weight: 600;
+  }
+
+  // 星期标题行
+  &__weekday-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 4px;
+    gap: 1px;
+  }
+
+  &__weekday-cell {
+    text-align: center;
+    font-size: 10px;
+    color: #8c8c8c;
+    padding: 2px 0;
+    font-weight: 500;
+    background: #fafafa;
+    border-radius: 2px;
+  }
+
+  // 日期网格
+  &__date-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+  }
+
+  // 日期单元格
+  &__date-cell {
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    cursor: default;
+    background: #fff;
+    border: 1px solid transparent;
+
+    // 基础状态
+    &--current-month {
+      color: #262626;
+      font-weight: 500;
+
+      &:hover {
+        background: #f5f5f5;
+      }
+    }
+
+    &--other-month {
+      color: #d9d9d9;
+      background: #fafafa;
+    }
+
+    // 特殊日期类型 - 按优先级从低到高排列
+    &--in-range {
+      background: #f6ffed;
+      border-color: #b7eb8f;
+
+      &:hover {
+        background: #ecf5e4;
+      }
+    }
+
+    &--weekend-rest {
+      background: #fff1f0;
+      border-color: #ffadd6;
+      color: #c41d7f;
+      font-weight: 600;
+      box-shadow: 0 0 0 1px #ffadd6;
+
+      &:hover {
+        background: #fff0f6;
+        transform: scale(1.05);
+      }
+    }
+
+    &--working-weekend {
+      background: #e6f7ff;
+      border-color: #40a9ff;
+      color: #0050b3;
+      font-weight: 600;
+      box-shadow: 0 0 0 1px #40a9ff;
+
+      &:hover {
+        background: #bae7ff;
+        transform: scale(1.05);
+      }
+    }
+
+    &--holiday {
+      background: #fff1f0;
+      border-color: #ffadd6;
+      color: #c41d7f;
+      font-weight: 600;
+      box-shadow: 0 0 0 1px #ffadd6;
+
+      &:hover {
+        background: #fff0f6;
+        transform: scale(1.05);
+      }
+    }
+
+    &--excluded {
+      background: #fff7e6;
+      border-color: #fa8c16;
+      color: #d46b08;
+      font-weight: 600;
+      box-shadow: 0 0 0 1px #fa8c16;
+
+      &:hover {
+        background: #ffefd9;
+        transform: scale(1.1);
+        animation: pulse-excluded 1s infinite;
+      }
+    }
+
+    &--vacation {
+      background: #fff1f0;
+      border-color: #ffadd6;
+      color: #c41d7f;
+      font-weight: 600;
+      box-shadow: 0 0 0 1px #ffadd6;
+
+      &:hover {
+        background: #fff0f6;
+        transform: scale(1.1);
+        animation: pulse-vacation 1s infinite;
+      }
+    }
+
+    &--today {
+      background: #722ed1;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 0 0 1px #722ed1;
+
+      &:hover {
+        background: #9254de;
+      }
+    }
+
+    &--clickable {
+      cursor: pointer;
+
+      &:active {
+        transform: scale(0.95);
+      }
+    }
+  }
+
+  // 日期数字
+  &__date-number {
+    position: relative;
+    z-index: 1;
+    line-height: 1;
+  }
+
+  // 日期标识符
+  &__date-indicator {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    font-size: 7px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 2;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+
+    &--vacation {
+      background: #ff4d4f;
+      color: #fff;
+    }
+
+    &--excluded {
+      background: #fa8c16;
+      color: #fff;
+    }
+
+    &--holiday {
+      background: #eb2f96;
+      color: #fff;
+    }
+
+    &--working-weekend {
+      background: #1890ff;
+      color: #fff;
+    }
+  }
+
+  // 动画效果
+  @keyframes pulse-vacation {
+    0% {
+      box-shadow: 0 0 0 1px #ff4d4f;
+    }
+
+    50% {
+      box-shadow: 0 0 0 3px rgb(255 77 79 / 30%);
+    }
+
+    100% {
+      box-shadow: 0 0 0 1px #ff4d4f;
+    }
+  }
+
+  @keyframes pulse-excluded {
+    0% {
+      box-shadow: 0 0 0 1px #fa8c16;
+    }
+
+    50% {
+      box-shadow: 0 0 0 3px rgb(250 140 22 / 30%);
+    }
+
+    100% {
+      box-shadow: 0 0 0 1px #fa8c16;
+    }
+  }
+
+
+
+  // 暗色主题适配
+  @media (prefers-color-scheme: dark) {
+    background: #1f1f1f;
+
+    &__header {
+      border-color: #434343;
+    }
+
+    &__year-title {
+      color: #fff;
+    }
+
+    &__month {
+      background: #262626;
+      border-color: #434343;
+    }
+
+    &__month-title {
+      color: #fff;
+    }
+
+    &__weekday-cell {
+      background: #1a1a1a;
+      color: #8c8c8c;
+    }
+
+    &__date-cell {
+      background: #262626;
+      color: #fff;
+
+      &--other-month {
+        background: #1a1a1a;
+        color: #434343;
+      }
+
+      &--current-month:hover {
+        background: #333;
+      }
+
+      &--weekend {
+        background: #1a2332;
+        color: #4da6ff;
+
+        &:hover {
+          background: #1f2937;
+        }
+      }
+    }
+  }
+
+  // 打印样式
+  @media print {
+    &__date-cell {
+      &--vacation,
+      &--excluded {
+        border: 2px solid #000 !important;
+        background: #f0f0f0 !important;
+        
+        &::after {
+          content: attr(title);
+          position: absolute;
+          bottom: -12px;
+          left: 0;
+          font-size: 6px;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+} 

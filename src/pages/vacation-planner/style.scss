@@ -1,0 +1,734 @@
+.vacation-planner {
+  padding: 24px;
+  background: #f5f5f5;
+  min-height: 100vh;
+  animation: fade-in-up 0.6s ease-out;
+
+  // 通用组件样式
+  .ant-card {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .ant-btn {
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .ant-tag {
+    border-radius: 6px;
+    transition: all 0.3s ease;
+  }
+
+  .ant-alert {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  }
+
+  .ant-list-item {
+    border: none;
+    padding: 8px 0;
+  }
+
+  &__header {
+    margin-bottom: 24px;
+    text-align: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 32px;
+    border-radius: 12px;
+    color: white;
+    box-shadow: 0 4px 20px rgb(102 126 234 / 30%);
+
+    .ant-typography {
+      color: white !important;
+      margin-bottom: 8px;
+    }
+
+    .anticon {
+      margin-right: 8px;
+      color: #ffd700;
+    }
+  }
+
+  // 表单区域样式
+  &__form-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+    transition: box-shadow 0.3s ease;
+    animation: slide-in-right 0.6s ease-out 0.1s both;
+
+    &:hover {
+      box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
+    }
+
+    .ant-card-head {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px 12px 0 0;
+      border-bottom: none;
+
+      .ant-card-head-title {
+        color: white;
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__form {
+    .ant-form-item-label > label {
+      font-weight: 600;
+      color: #333;
+    }
+  }
+
+  &__date-picker {
+    width: 100%;
+    border-radius: 8px;
+
+    &:hover {
+      border-color: #667eea;
+    }
+
+    &:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgb(102 126 234 / 20%);
+    }
+  }
+
+  &__input-number {
+    width: 100%;
+    border-radius: 8px;
+
+    &:hover {
+      border-color: #667eea;
+    }
+
+    &:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgb(102 126 234 / 20%);
+    }
+  }
+
+  // 约束条件样式
+  &__constraint-section {
+    width: 100%;
+
+    .ant-picker {
+      width: 100%;
+      border-radius: 8px;
+
+      &:hover {
+        border-color: #667eea;
+      }
+
+      &:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgb(102 126 234 / 20%);
+      }
+    }
+  }
+
+  &__excluded-dates {
+    min-height: 32px;
+    padding: 8px;
+    border: 1px dashed #d9d9d9;
+    border-radius: 8px;
+    background: #fafafa;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: #667eea;
+      background: #f0f2ff;
+    }
+
+    .ant-tag {
+      margin: 2px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgb(255 77 79 / 30%);
+      }
+    }
+  }
+
+  &__mandatory-section {
+    width: 100%;
+  }
+
+  &__add-button {
+    width: 100%;
+    border-radius: 8px;
+    border-style: dashed;
+    border-color: #667eea;
+    color: #667eea;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: #667eea;
+      color: #667eea;
+      background: #f0f2ff;
+      transform: translateY(-1px);
+    }
+  }
+
+  &__mandatory-card {
+    border-radius: 8px;
+    border: 1px solid #e8f4fd;
+    background: #f8fcff;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: #667eea;
+      box-shadow: 0 2px 8px rgb(102 126 234 / 10%);
+    }
+
+    .ant-card-head {
+      background: transparent;
+      border-bottom: 1px solid #e8f4fd;
+      min-height: auto;
+      padding: 8px 12px;
+
+      .ant-card-head-title {
+        font-size: 12px;
+        color: #666;
+      }
+    }
+
+    .ant-card-body {
+      padding: 12px;
+    }
+  }
+
+  &__calculate-button {
+    height: 48px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgb(102 126 234 / 30%);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgb(102 126 234 / 40%);
+    }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgb(102 126 234 / 30%);
+    }
+  }
+
+  // 结果区域样式
+  &__result {
+    width: 100%;
+    animation: slide-in-right 0.6s ease-out 0.3s both;
+  }
+
+  &__stats-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+    transition: all 0.3s ease;
+
+    &:hover {
+      box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
+    }
+
+    .ant-card-head {
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      border-radius: 12px 12px 0 0;
+      border-bottom: none;
+
+      .ant-card-head-title {
+        color: #2c3e50;
+        font-weight: 600;
+      }
+    }
+
+    .ant-statistic {
+      text-align: center;
+      padding: 16px 8px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: #f8f9fa;
+        transform: translateY(-2px);
+      }
+
+      .ant-statistic-title {
+        font-weight: 600;
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      .ant-statistic-content {
+        font-size: 24px;
+        font-weight: 700;
+      }
+    }
+  }
+
+  &__plans-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+
+    .ant-card-head {
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      border-radius: 12px 12px 0 0;
+      border-bottom: none;
+
+      .ant-card-head-title {
+        color: #8b4513;
+        font-weight: 600;
+
+        .ant-badge {
+          .ant-badge-count {
+            background: #ff7875;
+            box-shadow: 0 2px 8px rgb(255 120 117 / 30%);
+            border-radius: 10px;
+          }
+        }
+      }
+    }
+  }
+
+  &__plan-item {
+    padding: 0;
+    border: none;
+
+    .ant-list-item {
+      padding: 8px 0;
+      border: none;
+    }
+  }
+
+  &__plan-card {
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    border: 1px solid #e8f4fd;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+    }
+
+    &--best {
+      border: 2px solid #ffd700;
+      background: linear-gradient(135deg, #fff9c4 0%, #fff8e1 100%);
+      box-shadow: 0 4px 16px rgb(255 215 0 / 30%);
+
+      .ant-card-head {
+        background: linear-gradient(135deg, #ffd700 0%, #ffb300 100%);
+        color: #8b4513;
+
+        .ant-card-head-title {
+          color: #8b4513;
+          font-weight: 700;
+        }
+      }
+    }
+  }
+
+  &__plan-content {
+    width: 100%;
+
+    .ant-typography {
+      margin-bottom: 8px;
+    }
+  }
+
+  &__plan-dates {
+    margin-top: 8px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px dashed #d9d9d9;
+
+    .ant-tag {
+      margin: 2px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgb(24 144 255 / 30%);
+      }
+    }
+  }
+
+  &__constraints-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+
+    .ant-card-head {
+      background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+      border-radius: 12px 12px 0 0;
+      border-bottom: none;
+
+      .ant-card-head-title {
+        color: #722ed1;
+        font-weight: 600;
+      }
+    }
+
+    .ant-tag {
+      margin: 4px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  // 日历相关样式
+  &__calendar-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+
+    .ant-card-head {
+      background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 100%);
+      border-radius: 12px 12px 0 0;
+      border-bottom: none;
+
+      .ant-card-head-title {
+        color: #2c3e50;
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__calendar-container {
+    padding: 16px 0;
+  }
+
+  &__calendar-legend {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px dashed #d9d9d9;
+
+    .ant-tag {
+      margin: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+  }
+
+  &__legend-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+
+    &--vacation {
+      background: #ff4d4f;
+    }
+
+    &--excluded {
+      background: #fa8c16;
+    }
+
+    &--workday {
+      background: #d9d9d9;
+    }
+
+    &--today {
+      background: #722ed1;
+    }
+
+    &--range {
+      background: #b7eb8f;
+    }
+
+    &--holiday {
+      background: #eb2f96;
+    }
+
+    &--working-weekend {
+      background: #1890ff;
+    }
+
+    &--weekend-rest {
+      background: #eb2f96;
+    }
+  }
+
+  &__calendar {
+    .ant-picker-calendar {
+      border: none;
+      border-radius: 8px;
+    }
+
+    .ant-picker-panel {
+      border: none;
+    }
+
+    .ant-picker-calendar-header {
+      border-bottom: 1px solid #f0f0f0;
+      padding: 16px 24px;
+    }
+
+    .ant-picker-content {
+      padding: 0;
+    }
+
+    .ant-picker-cell {
+      position: relative;
+
+      &:hover {
+        background: #f5f5f5;
+      }
+    }
+
+    .ant-picker-cell-in-view {
+      .ant-picker-calendar-date {
+        color: #262626;
+      }
+    }
+
+    .ant-picker-cell-disabled {
+      .ant-picker-calendar-date {
+        color: #bfbfbf;
+      }
+    }
+  }
+
+  &__calendar-cell {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+
+    &--vacation {
+      background: #fff2f0;
+      border: 2px solid #ff4d4f;
+
+      &:hover {
+        background: #ffebeb;
+        transform: scale(1.05);
+      }
+    }
+
+    &--excluded {
+      background: #fff7e6;
+      border: 2px solid #fa8c16;
+
+      &:hover {
+        background: #ffefd9;
+        transform: scale(1.05);
+      }
+    }
+
+    &--weekend {
+      background: #e6f7ff;
+      border: 1px solid #91d5ff;
+
+      &:hover {
+        background: #d4edff;
+      }
+    }
+
+    &--workday {
+      background: #fafafa;
+      border: 1px solid #f0f0f0;
+
+      &:hover {
+        background: #f5f5f5;
+      }
+    }
+
+    &--outside {
+      background: #f5f5f5;
+      opacity: 0.5;
+      border: 1px solid #e8e8e8;
+    }
+  }
+
+  &__calendar-indicator {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    color: #333;
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d9d9d9;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+  }
+
+  &__calendar-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    background: #fafafa;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #f0f0f0;
+
+    .ant-btn {
+      border-radius: 6px;
+    }
+  }
+
+  // 空状态样式
+  &__empty-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__empty {
+    text-align: center;
+    padding: 40px;
+
+    &-icon {
+      font-size: 64px;
+      color: #d9d9d9;
+      margin-bottom: 16px;
+      animation: pulse 2s infinite;
+    }
+
+    .ant-typography {
+      margin-bottom: 8px;
+    }
+  }
+
+  @media (width <= 768px) {
+    padding: 16px;
+
+    &__header {
+      padding: 24px 16px;
+      margin-bottom: 16px;
+
+      .ant-typography h2 {
+        font-size: 20px;
+      }
+    }
+
+    &__stats-card {
+      .ant-row {
+        .ant-col-6 {
+          flex: 0 0 50%;
+          max-width: 50%;
+          margin-bottom: 16px;
+        }
+      }
+    }
+
+    &__plan-card {
+      .ant-card-head-title {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+// 动画效果
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+// 加载状态样式
+.ant-spin-spinning {
+  .vacation-planner__result {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}
+
+// 深色主题适配
+@media (prefers-color-scheme: dark) {
+  .vacation-planner {
+    background: #141414;
+    color: #fff;
+
+    &__header {
+      background: linear-gradient(135deg, #434343 0%, #000 100%);
+    }
+
+    .ant-card {
+      background: #1f1f1f;
+      border-color: #434343;
+
+      .ant-card-head {
+        background: linear-gradient(135deg, #434343 0%, #000 100%);
+        border-color: #434343;
+      }
+    }
+
+    &__excluded-dates {
+      background: #262626;
+      border-color: #434343;
+
+      &:hover {
+        background: #1f1f1f;
+        border-color: #667eea;
+      }
+    }
+
+    &__mandatory-card {
+      background: #262626;
+      border-color: #434343;
+
+      &:hover {
+        border-color: #667eea;
+      }
+    }
+  }
+}
